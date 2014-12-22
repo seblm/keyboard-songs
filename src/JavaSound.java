@@ -48,7 +48,7 @@ import javax.sound.midi.*;
  */
 public class JavaSound extends JPanel implements ChangeListener, Runnable {
 
-    Vector demos = new Vector(4);
+    Vector<ControlContext> demos = new Vector<>(4);
     JTabbedPane tabPane = new JTabbedPane();
     int width = 760, height = 500;
     int index;
@@ -61,17 +61,13 @@ public class JavaSound extends JPanel implements ChangeListener, Runnable {
         JMenuBar menuBar = new JMenuBar();
        
         if (JavaSoundApplet.applet == null) {
-            JMenu fileMenu = (JMenu) menuBar.add(new JMenu("File"));
-            JMenuItem item = (JMenuItem) fileMenu.add(new JMenuItem("Exit"));
-            item.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) { System.exit(0); }
-            });
+            JMenu fileMenu = menuBar.add(new JMenu("File"));
+            JMenuItem item = fileMenu.add(new JMenuItem("Exit"));
+            item.addActionListener(event -> System.exit(0));
         }
-        JMenu options = (JMenu) menuBar.add(new JMenu("Options"));
-        JMenuItem item = (JMenuItem) options.add(new JMenuItem("Applet Info"));
-        item.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) { showInfoDialog(); }
-        });
+        JMenu options = menuBar.add(new JMenu("Options"));
+        JMenuItem item = options.add(new JMenuItem("Applet Info"));
+        item.addActionListener(event -> showInfoDialog());
         add(menuBar, BorderLayout.NORTH);
 
         tabPane.addChangeListener(this);
@@ -101,12 +97,12 @@ public class JavaSound extends JPanel implements ChangeListener, Runnable {
 
 
     public void close() {
-        ((ControlContext) demos.get(index)).close();
+        demos.get(index).close();
     }
 
 
     public void open() {
-        ((ControlContext) demos.get(index)).open();
+        demos.get(index).open();
     }
 
 
@@ -125,11 +121,7 @@ public class JavaSound extends JPanel implements ChangeListener, Runnable {
             "  permission java.util.PropertyPermission \"user.dir\", \"read\";\n"+
             "}; \n\n" +
             "The permissions need to be added to the .java.policy file.";
-        new Thread(new Runnable() {
-            public void run() {
-                JOptionPane.showMessageDialog(null, msg, "Applet Info", JOptionPane.INFORMATION_MESSAGE);
-            }
-        }).start();
+        new Thread(() -> JOptionPane.showMessageDialog(null, msg, "Applet Info", JOptionPane.INFORMATION_MESSAGE)).start();
     }
 
 
@@ -176,7 +168,7 @@ public class JavaSound extends JPanel implements ChangeListener, Runnable {
         String media = "./audio";
         if (args.length > 0) {
             File file = new File(args[0]);
-            if (file == null && !file.isDirectory()) {
+            if (!file.isDirectory()) {
                 System.out.println("usage: java JavaSound audioDirectory");
             } else {
                 media = args[0];

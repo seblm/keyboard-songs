@@ -77,7 +77,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
     JTable table;
     int row, col;
     JButton loopB, startB;
-    JComboBox combo;
+    JComboBox<String> combo;
     String instruments[] = 
         { "Acoustic bass drum", "Bass drum 1", "Side stick", "Acoustic snare",
           "Hand clap", "Electric snare", "Low floor tom", "Closed hi-hat",
@@ -91,7 +91,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
           "Short whistle", "Long whistle", "Short guiro", "Long guiro", 
           "Claves", "Hi wood block", "Low wood block", "Mute cuica", 
           "Open cuica", "Mute triangle", "Open triangle" };
-    Vector data = new Vector(instruments.length);
+    Vector<Data> data = new Vector<>(instruments.length);
 
 
     public Groove() {
@@ -114,9 +114,9 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
             public int getRowCount() { return data.size();}
             public Object getValueAt(int row, int col) { 
                 if (col == 0) {
-                    return ((Data) data.get(row)).name;
+                    return data.get(row).name;
                 } else {
-                    return ((Data) data.get(row)).staff[col-1];
+                    return data.get(row).staff[col-1];
                 }
             }
             public String getColumnName(int col) { return names[col]; }
@@ -124,13 +124,13 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
                 return getValueAt(0, c).getClass();
             }
             public boolean isCellEditable(int row, int col) {
-                return col == 0 ? false : true;
+                return col != 0;
             }
             public void setValueAt(Object aValue, int row, int col) {
                 if (col == 0) {
-                    ((Data) data.get(row)).name = (String) aValue;
+                    data.get(row).name = (String) aValue;
                 } else {
-                    ((Data) data.get(row)).staff[col-1] = (Color) aValue;
+                    data.get(row).staff[col-1] = (Color) aValue;
                 }
             }
         };
@@ -151,32 +151,28 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
 
         // Listener for row changes
         ListSelectionModel lsm = table.getSelectionModel();
-        lsm.addListSelectionListener(new ListSelectionListener() {
-            public void valueChanged(ListSelectionEvent e) {
-                ListSelectionModel sm = (ListSelectionModel) e.getSource();
-                if (!sm.isSelectionEmpty()) {
-                    row = sm.getMinSelectionIndex();
-                }
+        lsm.addListSelectionListener(event -> {
+            ListSelectionModel sm = (ListSelectionModel) event.getSource();
+            if (!sm.isSelectionEmpty()) {
+                row = sm.getMinSelectionIndex();
             }
         });
 
         // Listener for column changes
         lsm = table.getColumnModel().getSelectionModel();
-        lsm.addListSelectionListener(new ListSelectionListener() {
-            public void valueChanged(ListSelectionEvent e) {
-                ListSelectionModel sm = (ListSelectionModel) e.getSource();
-                if (!sm.isSelectionEmpty()) {
-                    col = sm.getMinSelectionIndex();
+        lsm.addListSelectionListener(event -> {
+            ListSelectionModel sm = (ListSelectionModel) event.getSource();
+            if (!sm.isSelectionEmpty()) {
+                col = sm.getMinSelectionIndex();
+            }
+            if (col != 0) {
+                Color c = data.get(row).staff[col-1];
+                if (c.equals(Color.white)) {
+                    data.get(row).staff[col-1] = Color.black;
+                } else {
+                    data.get(row).staff[col-1] = Color.white;
                 }
-                if (col != 0) {
-                    Color c = ((Data) data.get(row)).staff[col-1];
-                    if (c.equals(Color.white)) {
-                        ((Data) data.get(row)).staff[col-1] = Color.black;
-                    } else {
-                        ((Data) data.get(row)).staff[col-1] = Color.white;
-                    }
-                    table.tableChanged(new TableModelEvent(dataModel));
-                }
+                table.tableChanged(new TableModelEvent(dataModel));
             }
         });
         
@@ -192,7 +188,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
         p2.add(loopB = makeButton("Loop", getBackground()));
         p2.add(makeButton("Clear Table", getBackground()));
 
-        combo = new JComboBox();
+        combo = new JComboBox<>();
         combo.addActionListener(this);
         combo.addItem("Rock Beat 1");
         combo.addItem("Rock Beat 2");
@@ -237,18 +233,20 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
 
 
     private void buildTrackThenStartSequencer() {
-        Sequence sequence = null;
+        Sequence sequence;
         try {
            sequence = new Sequence(Sequence.PPQ, 4);
-        } catch (Exception ex) { ex.printStackTrace(); }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return;
+        }
         track = sequence.createTrack();
         createEvent(PROGRAM, 9, 1, 0);
-        for (int i = 0; i < data.size(); i++) {
-            Data d = (Data) data.get(i);
+        for (Data d : data) {
             for (int j = 0; j < d.staff.length; j++) {
                 if (d.staff[j].equals(Color.black)) {
-                     createEvent(NOTEON, 9, d.id, j); 
-                     createEvent(NOTEOFF, 9, d.id, j+1); 
+                    createEvent(NOTEON, 9, d.id, j);
+                    createEvent(NOTEOFF, 9, d.id, j + 1);
                 }
             }
         }
@@ -279,44 +277,44 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
         clearTable();
 
         switch (num) {
-            case 0 : for (int i = 0; i < 16; i+=2) {
-                         setCell(CLOSED_HIHAT, i); 
-                     }
-                     setCell(ACOUSTIC_SNARE, 4);
-                     setCell(ACOUSTIC_SNARE, 12);
-                     int bass1[] = { 0, 3, 6, 8 };
-                     for (int i = 0; i < bass1.length; i++) {
-                         setCell(ACOUSTIC_BASS, bass1[i]); 
-                     }
-                     break;
-            case 1 : for (int i = 0; i < 16; i+=4) {
-                         setCell(CRASH_CYMBAL1, i); 
-                     }
-                     for (int i = 0; i < 16; i+=2) {
-                         setCell(PEDAL_HIHAT, i); 
-                     }
-                     setCell(ACOUSTIC_SNARE, 4);
-                     setCell(ACOUSTIC_SNARE, 12);
-                     int bass2[] = { 0, 2, 3, 7, 9, 10, 15 };
-                     for (int i = 0; i < bass2.length; i++) {
-                         setCell(ACOUSTIC_BASS, bass2[i]); 
-                     }
-                     break;
-            case 2 : for (int i = 0; i < 16; i+=4) {
-                         setCell(RIDE_BELL, i); 
-                     }
-                     for (int i = 2; i < 16; i+=4) {
-                         setCell(PEDAL_HIHAT, i); 
-                     }
-                     setCell(HAND_CLAP, 4);
-                     setCell(HAND_CLAP, 12);
-                     setCell(HI_TOM, 13);
-                     setCell(LO_TOM, 14);
-                     int bass3[] = { 0, 3, 6, 9, 15 };
-                     for (int i = 0; i < bass3.length; i++) {
-                         setCell(ACOUSTIC_BASS+1, bass3[i]); 
-                     }
-                     break;
+            case 0 :
+                for (int i = 0; i < 16; i+=2) {
+                    setCell(CLOSED_HIHAT, i); 
+                }
+                setCell(ACOUSTIC_SNARE, 4);
+                setCell(ACOUSTIC_SNARE, 12);
+                for (int aBass1 : new int[]{ 0, 3, 6, 8 }) {
+                    setCell(ACOUSTIC_BASS, aBass1);
+                }
+                break;
+            case 1 :
+                for (int i = 0; i < 16; i+=4) {
+                     setCell(CRASH_CYMBAL1, i); 
+                }
+                for (int i = 0; i < 16; i+=2) {
+                     setCell(PEDAL_HIHAT, i); 
+                }
+                setCell(ACOUSTIC_SNARE, 4);
+                setCell(ACOUSTIC_SNARE, 12);
+                for (int aBass2 : new int[]{ 0, 2, 3, 7, 9, 10, 15 }) {
+                    setCell(ACOUSTIC_BASS, aBass2);
+                }
+                break;
+            case 2 :
+                for (int i = 0; i < 16; i+=4) {
+                     setCell(RIDE_BELL, i); 
+                }
+                for (int i = 2; i < 16; i+=4) {
+                     setCell(PEDAL_HIHAT, i); 
+                }
+                setCell(HAND_CLAP, 4);
+                setCell(HAND_CLAP, 12);
+                setCell(HI_TOM, 13);
+                setCell(LO_TOM, 14);
+                for (int aBass3 : new int[]{ 0, 3, 6, 9, 15 }) {
+                    setCell(ACOUSTIC_BASS + 1, aBass3);
+                }
+                break;
             default :
         }
         table.tableChanged(new TableModelEvent(dataModel));
@@ -324,8 +322,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
 
 
     private void setCell(int id, int tick) {
-        for (int i = 0; i < data.size(); i++) {
-            Data d = (Data) data.get(i);
+        for (Data d : data) {
             if (d.id == id) {
                 d.staff[tick] = Color.black;
                 break;
@@ -335,8 +332,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
 
 
     private void clearTable() {
-        for (int i = 0; i < data.size(); i++) {
-            Data d = (Data) data.get(i);
+        for (Data d : data) {
             for (int j = 0; j < d.staff.length; j++) {
                 d.staff[j] = Color.white;
             }
@@ -404,7 +400,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
     /**
      * Storage class for instrument and musical staff represented by color.
      */
-    class Data extends Object {
+    class Data {
         String name; int id; Color staff[] = new Color[16];
         public Data(String name, int id) {
             this.name = name;
@@ -429,7 +425,7 @@ public class Groove extends JPanel implements ActionListener, ControlContext, Me
         int h = 440;
         f.setLocation(screenSize.width/2 - w/2, screenSize.height/2 - h/2);
         f.setSize(w, h);
-        f.show();
+        f.setVisible(true);
         groove.open();
     }
 } 

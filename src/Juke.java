@@ -59,10 +59,9 @@ import java.net.URL;
  */
 public class Juke extends JPanel implements Runnable, LineListener, MetaEventListener, ControlContext {
 
-    final int bufSize = 16384;
     PlaybackMonitor playbackMonitor = new PlaybackMonitor();
 
-    Vector sounds = new Vector();
+    Vector<File> sounds = new Vector<>();
     Thread thread;
     Sequencer sequencer;
     boolean midiEOM, audioEOM;
@@ -137,17 +136,16 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
     public void loadJuke(String name) {
         try {
             File file = new File(name);
-            if (file != null && file.isDirectory()) {
-                String files[] = file.list();
-                for (int i = 0; i < files.length; i++) {
-                    File leafFile = new File(file.getAbsolutePath(), files[i]);
+            if (file.isDirectory()) {
+                for (String file1 : file.list()) {
+                    File leafFile = new File(file.getAbsolutePath(), file1);
                     if (leafFile.isDirectory()) {
                         loadJuke(leafFile.getAbsolutePath());
                     } else {
                         addSound(leafFile);
                     }
                 }
-            } else if (file != null && file.exists()) {
+            } else if (file.exists()) {
                 addSound(file);
             }
         } catch (SecurityException ex) {
@@ -304,16 +302,16 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
         if (currentSound instanceof Sequence || currentSound instanceof BufferedInputStream && thread != null) {
             sequencer.start();
             while (!midiEOM && thread != null && !bump) {
-                try { thread.sleep(99); } catch (Exception e) {break;}
+                try { Thread.sleep(99); } catch (Exception e) {break;}
             }
             sequencer.stop();
             sequencer.close();
         } else if (currentSound instanceof Clip && thread != null) {
             Clip clip = (Clip) currentSound;
             clip.start();
-            try { thread.sleep(99); } catch (Exception e) { }
+            try { Thread.sleep(99); } catch (Exception e) { e.printStackTrace(); }
             while ((paused || clip.isActive()) && thread != null && !bump) {
-                try { thread.sleep(99); } catch (Exception e) {break;}
+                try { Thread.sleep(99); } catch (Exception e) {break;}
             }
             clip.stop();
             clip.close();
@@ -380,11 +378,6 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
     }
 
 
-    public Thread getThread() {
-        return thread;
-    }
-
-
     public void start() {
         thread = new Thread(this);
         thread.setName("Juke");
@@ -406,11 +399,11 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
             for (; num < sounds.size() && thread != null; num++) {
                 table.scrollRectToVisible(new Rectangle(0,(num+2)*(table.getRowHeight()+table.getRowMargin()),1,1));
                 table.setRowSelectionInterval(num, num);
-                if( loadSound(sounds.get(num)) == true ) {
+                if(loadSound(sounds.get(num))) {
                     playSound();
 		}
                 // take a little break between sounds
-                try { thread.sleep(222); } catch (Exception e) {break;}
+                try { Thread.sleep(222); } catch (Exception e) {break;}
             }
             num = 0;
         } while (loopB.isSelected() && thread != null);
@@ -439,8 +432,8 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
                 ex.printStackTrace();
             }
         } else if (currentSound instanceof Sequence || currentSound instanceof BufferedInputStream) {
-            for (int i = 0; i < channels.length; i++) {                
-				channels[i].controlChange(10, (int)(((double)value + 100.0) / 200.0 *  127.0));
+            for (MidiChannel channel : channels) {
+                channel.controlChange(10, (int) (((double) value + 100.0) / 200.0 * 127.0));
             }										 
         }
     }
@@ -461,10 +454,9 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
                 ex.printStackTrace();
             }
         } else if (currentSound instanceof Sequence || currentSound instanceof BufferedInputStream) {
-            for (int i = 0; i < channels.length; i++) {                
-				channels[i].controlChange(7, (int)(value * 127.0));
-
-			}
+            for (MidiChannel channel : channels) {
+                channel.controlChange(7, (int) (value * 127.0));
+            }
         }
     }
 
@@ -482,7 +474,7 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
             p1.setLayout(new BoxLayout(p1, BoxLayout.Y_AXIS));
             p1.setBorder(new EmptyBorder(10,0,5,0));
             JPanel p2 = new JPanel();
-            startB = addButton("Start", p2, sounds.size() != 0);
+            startB = addButton("Start", p2, !sounds.isEmpty());
             pauseB = addButton("Pause", p2, false);
             p1.add(p2);
             JPanel p3 = new JPanel();
@@ -535,11 +527,9 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
                 if (currentSound instanceof Clip) {
                     ((Clip) currentSound).setFramePosition(value);
                 } else if (currentSound instanceof Sequence) {
-                    long dur = ((Sequence) currentSound).getMicrosecondLength();
-					sequencer.setMicrosecondPosition(value * 1000);
+                    sequencer.setMicrosecondPosition(value * 1000);
                 } else if (currentSound instanceof BufferedInputStream) {
-                    long dur = sequencer.getMicrosecondLength();
-					sequencer.setMicrosecondPosition(value * 1000);
+                    sequencer.setMicrosecondPosition(value * 1000);
                 }
                 playbackMonitor.repaint();
                 return;
@@ -547,12 +537,12 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
             TitledBorder tb = (TitledBorder) slider.getBorder();
             String s = tb.getTitle();
             if (s.startsWith("Pan")) {
-                s = s.substring(0, s.indexOf('=')+1) + s.valueOf(value/100.0);
+                s = s.substring(0, s.indexOf('=')+1) + String.valueOf(value / 100.0);
                 if (currentSound != null) {
                     setPan();
                 }
             } else if (s.startsWith("Gain")) {
-                s = s.substring(0, s.indexOf('=')+1) + s.valueOf(value);
+                s = s.substring(0, s.indexOf('=')+1) + String.valueOf(value);
                 if (currentSound != null) {
                     setGain();
                 }
@@ -731,7 +721,7 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
         public void run() {
             while (pbThread != null) {
                 try {
-                    pbThread.sleep(99);
+                    Thread.sleep(99);
                 } catch (Exception e) { break; }
                 repaint();
             }
@@ -762,13 +752,11 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
                 public int getRowCount() { return sounds.size();}
                 public Object getValueAt(int row, int col) { 
                     if (col == 0) {
-                        return new Integer(row);
+                        return row;
                     } else if (col == 1) {
-                        Object object = sounds.get(row);
-                        if (object instanceof File) {
-                            return ((File) object).getName();
-                        } else if (object instanceof URL) {
-                            return ((URL) object).getFile();
+                        File object = sounds.get(row);
+                        if (object != null) {
+                            return object.getName();
                         }
                     } 
                     return null;
@@ -797,17 +785,17 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
             JPanel p1 = new JPanel();
             JMenuBar menuBar = new JMenuBar();
             menuBar.setBorder(new BevelBorder(BevelBorder.RAISED));
-            JMenu menu = (JMenu) menuBar.add(new JMenu("Add"));
+            JMenu menu = menuBar.add(new JMenu("Add"));
             String items[] = { "File or Directory of Files", "URL" };
-            for (int i = 0; i < items.length; i++) {
-                JMenuItem item = menu.add(new JMenuItem(items[i]));
+            for (String label : items) {
+                JMenuItem item = menu.add(new JMenuItem(label));
                 item.addActionListener(this);
             } 
             p1.add(menuBar);
 
             menuBar = new JMenuBar();
             menuBar.setBorder(new BevelBorder(BevelBorder.RAISED));
-            menu = (JMenu) menuBar.add(new JMenu("Remove"));
+            menu = menuBar.add(new JMenu("Remove"));
             JMenuItem item = menu.add(new JMenuItem("Selected"));
             item.addActionListener(this);
             item = menu.add(new JMenuItem("All"));
@@ -842,7 +830,7 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
             } else {
                 p1.add(new JLabel("File or Dir :"));
                 String sep = String.valueOf(System.getProperty("file.separator").toCharArray()[0]);
-                String text = null;
+                String text;
                 try {
                     text = System.getProperty("user.dir") + sep;
                 } catch (SecurityException ex) {
@@ -882,9 +870,9 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
                     doFrame("Add URL");
                 } else if (mi.getText().equals("Selected")) {
                     int rows[] = table.getSelectedRows();
-                    Vector tmp = new Vector();
-                    for (int i = 0; i < rows.length;i++) {
-                        tmp.add(sounds.get(rows[i]));
+                    Vector<File> tmp = new Vector<>();
+                    for (int row : rows) {
+                        tmp.add(sounds.get(row));
                     }
                     sounds.removeAll(tmp);
                     tableChanged();
@@ -898,8 +886,8 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
                     String name = textField.getText().trim();
                     if (name.startsWith("http") || name.startsWith("file")) {
                         try {
-                            sounds.add(new URL(name));
-                        } catch (Exception ex) { ex.printStackTrace(); };
+                            sounds.add(new File(new URL(name).toURI()));
+                        } catch (Exception ex) { ex.printStackTrace(); }
                     } else {
                         loadJuke(name);
                     }
@@ -1017,7 +1005,7 @@ public class Juke extends JPanel implements Runnable, LineListener, MetaEventLis
         f.setVisible(true);
         if (args.length > 0) {
             File file = new File(args[0]);
-            if (file == null && !file.isDirectory()) {
+            if (!file.isDirectory()) {
                 System.out.println("usage: java Juke audioDirectory");
             } 
         }

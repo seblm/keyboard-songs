@@ -48,7 +48,7 @@ public class JavaSoundApplet extends JApplet {
     public void init() {
         applet = this;
         String media = "./audio";
-        String param = null;
+        String param;
         if ((param = getParameter("dir")) != null) {
             media = param;
         } 

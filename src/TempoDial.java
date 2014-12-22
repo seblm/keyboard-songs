@@ -29,6 +29,7 @@
  */
 
 
+import static java.util.stream.Collectors.toCollection;
 import java.awt.*;
 import java.awt.geom.*;
 import java.awt.event.*;
@@ -47,7 +48,7 @@ public class TempoDial extends JPanel {
 
     private int dotSize = 6;
     private Ellipse2D ellipse;
-    private Vector data;
+    private Vector<Data> data;
     private Data currentData;
     private Sequencer sequencer;
 
@@ -56,7 +57,7 @@ public class TempoDial extends JPanel {
         setBackground(new Color(20, 20, 20)); 
 
         ellipse = new Ellipse2D.Float(2,20,92,120);
-        Vector dots = new Vector();
+        Vector<Ellipse2D.Float> dots = new Vector<>();
         PathIterator pi = ellipse.getPathIterator(null, 0.9);
         while ( !pi.isDone() ) {
             float[] pt = new float[6];
@@ -67,35 +68,32 @@ public class TempoDial extends JPanel {
             }
             pi.next();
         }
-        Vector tmp = new Vector();
-        for (int i = 0; i < dots.size(); i++) {
-            if (((Ellipse2D) dots.get(i)).getY() >= ellipse.getHeight()/2) {
-                tmp.add(dots.get(i));
-            }
-        }
+        Vector<Ellipse2D.Float> tmp = dots.stream()
+                .filter(dot -> dot.getY() >= ellipse.getHeight() / 2)
+                .collect(toCollection(Vector::new));
         dots.removeAll(tmp);
 
         float x = (float) (ellipse.getX() + ellipse.getWidth()/2);
         float y = (float) (ellipse.getY() + (ellipse.getHeight()/2));
-        Vector paths = new Vector(dots.size());
+        Vector<GeneralPath> paths = new Vector<>(dots.size());
         for (int i = 0; i < dots.size(); i++) {
             GeneralPath gp = new GeneralPath(GeneralPath.WIND_NON_ZERO);
             gp.moveTo(x, y);
-            Ellipse2D e1 = (Ellipse2D) dots.get(i);
+            Ellipse2D e1 = dots.get(i);
             gp.lineTo((float) e1.getX(), (float) e1.getY());
             if (i+1 < dots.size()) {
-                Ellipse2D e2 = (Ellipse2D) dots.get(i+1);
+                Ellipse2D e2 = dots.get(i+1);
                 gp.lineTo((float) e2.getX(), (float) e2.getY());
             }
             gp.closePath();
             paths.add(gp);
         }
 
-        data = new Vector(paths.size());
+        data = new Vector<>(paths.size());
         for (int i = 0, tempo = 40; i < paths.size(); i++, tempo+=10) {
             data.add(new Data(tempo, dots.get(i), paths.get(i)));
             if (tempo == 120) {
-                currentData = (Data) data.lastElement();
+                currentData = data.lastElement();
             }
         }
 
@@ -110,15 +108,15 @@ public class TempoDial extends JPanel {
     
     private void processMouse(MouseEvent e) {
         if (ellipse.contains(e.getPoint())) {
-            for (int i = 0; i < data.size(); i++) {
-                currentData = (Data) data.get(i);
+            for (Data aData : data) {
+                currentData = aData;
                 if (currentData.path.contains(e.getPoint())) {
                     break;
                 }
             }
             repaint();
             if (sequencer != null) {
-                sequencer.setTempoInBPM((float) getTempo());
+                sequencer.setTempoInBPM(getTempo());
             }
         }
     }
@@ -131,21 +129,6 @@ public class TempoDial extends JPanel {
 
     public float getTempo() {
         return ((float) currentData.tempo);
-    }
-
-
-    /**
-     * Tempo value must match one found in data vector.  
-     * Acceptable tempo values start at 40 increment by 10 until 160.
-     */
-    public void setTempo(float tempo) {
-        for (int i = 0; i < data.size(); i++) {
-            currentData = (Data) data.get(i);
-            if (currentData.tempo == tempo) {
-                break;
-            }
-        }
-        repaint();
     }
 
 
@@ -174,8 +157,8 @@ public class TempoDial extends JPanel {
         g2.fill(currentData.dot);
         g2.setStroke(new BasicStroke(1.5f));
         g2.setColor(jfcBlue.darker());
-        for (int i = 0; i < data.size(); i++) {
-            g2.draw(((Data) data.get(i)).dot);
+        for (Data aData : data) {
+            g2.draw(aData.dot);
         }
     }
 
@@ -192,7 +175,7 @@ public class TempoDial extends JPanel {
     /**
      * Convenience storage class for our tempo dial data.
      */
-    class Data extends Object {
+    class Data {
         int tempo; Ellipse2D dot; GeneralPath path;
         public Data(int tempo, Object dot, Object path) {
             this.tempo = tempo;

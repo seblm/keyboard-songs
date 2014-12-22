@@ -29,6 +29,9 @@
  */
 
 
+import static javax.swing.JTable.AUTO_RESIZE_OFF;
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS;
+import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -65,9 +68,9 @@ public class MidiSynth extends JPanel implements ControlContext {
     ChannelData cc;    // current channel
     JCheckBox mouseOverCB = new JCheckBox("mouseOver", true);
     JSlider veloS, presS, bendS, revbS;
-    JCheckBox soloCB, monoCB, muteCB, sustCB; 
-    Vector keys = new Vector();
-    Vector whiteKeys = new Vector();
+    JCheckBox soloCB, monoCB, muteCB; 
+    Vector<Key> keys = new Vector<>();
+    Vector<Key> whiteKeys = new Vector<>();
     JTable table;
     Piano piano;
     boolean record;
@@ -210,7 +213,7 @@ public class MidiSynth extends JPanel implements ControlContext {
      */
     class Piano extends JPanel implements MouseListener {
 
-        Vector blackKeys = new Vector();
+        Vector<Key> blackKeys = new Vector<>();
         Key prevKey;
         final int kw = 16, kh = 80;
 
@@ -282,9 +285,9 @@ public class MidiSynth extends JPanel implements ControlContext {
 
 
         public Key getKey(Point point) {
-            for (int i = 0; i < keys.size(); i++) {
-                if (((Key) keys.get(i)).contains(point)) {
-                    return (Key) keys.get(i);
+            for (Key key : keys) {
+                if (key.contains(point)) {
+                    return key;
                 }
             }
             return null;
@@ -300,25 +303,23 @@ public class MidiSynth extends JPanel implements ControlContext {
             g2.setColor(Color.white);
             g2.fillRect(0, 0, 42*kw, kh);
 
-            for (int i = 0; i < whiteKeys.size(); i++) {
-                Key key = (Key) whiteKeys.get(i);
-                if (key.isNoteOn()) {
+            for (Key whiteKey : whiteKeys) {
+                if (whiteKey.isNoteOn()) {
                     g2.setColor(record ? pink : jfcBlue);
-                    g2.fill(key);
+                    g2.fill(whiteKey);
                 }
                 g2.setColor(Color.black);
-                g2.draw(key);
+                g2.draw(whiteKey);
             }
-            for (int i = 0; i < blackKeys.size(); i++) {
-                Key key = (Key) blackKeys.get(i);
-                if (key.isNoteOn()) {
+            for (Key blackKey : blackKeys) {
+                if (blackKey.isNoteOn()) {
                     g2.setColor(record ? pink : jfcBlue);
-                    g2.fill(key);
+                    g2.fill(blackKey);
                     g2.setColor(Color.black);
-                    g2.draw(key);
+                    g2.draw(blackKey);
                 } else {
                     g2.setColor(Color.black);
-                    g2.fill(key);
+                    g2.fill(blackKey);
                 }
             }
         }
@@ -356,7 +357,7 @@ public class MidiSynth extends JPanel implements ControlContext {
             for (int i = 0; i < slider.length; i++) {
                 TitledBorder tb = (TitledBorder) slider[i].getBorder();
                 String s = tb.getTitle();
-                tb.setTitle(s.substring(0, s.indexOf('=')+1)+s.valueOf(v[i]));
+                tb.setTitle(s.substring(0, s.indexOf('=')+1)+ String.valueOf(v[i]));
                 slider[i].repaint();
             }
         }
@@ -405,40 +406,36 @@ public class MidiSynth extends JPanel implements ControlContext {
 
             // Listener for row changes
             ListSelectionModel lsm = table.getSelectionModel();
-            lsm.addListSelectionListener(new ListSelectionListener() {
-                public void valueChanged(ListSelectionEvent e) {
-                    ListSelectionModel sm = (ListSelectionModel) e.getSource();
-                    if (!sm.isSelectionEmpty()) {
-                        cc.row = sm.getMinSelectionIndex();
-                    }
-                    programChange(cc.col*nRows+cc.row);
+            lsm.addListSelectionListener(event -> {
+                ListSelectionModel sm = (ListSelectionModel) event.getSource();
+                if (!sm.isSelectionEmpty()) {
+                    cc.row = sm.getMinSelectionIndex();
                 }
+                programChange(cc.col*nRows+cc.row);
             });
 
             // Listener for column changes
             lsm = table.getColumnModel().getSelectionModel();
-            lsm.addListSelectionListener(new ListSelectionListener() {
-                public void valueChanged(ListSelectionEvent e) {
-                    ListSelectionModel sm = (ListSelectionModel) e.getSource();
-                    if (!sm.isSelectionEmpty()) {
-                        cc.col = sm.getMinSelectionIndex();
-                    }
-                    programChange(cc.col*nRows+cc.row);
+            lsm.addListSelectionListener(event -> {
+                ListSelectionModel sm = (ListSelectionModel) event.getSource();
+                if (!sm.isSelectionEmpty()) {
+                    cc.col = sm.getMinSelectionIndex();
                 }
+                programChange(cc.col*nRows+cc.row);
             });
 
             table.setPreferredScrollableViewportSize(new Dimension(nCols*110, 200));
             table.setCellSelectionEnabled(true);
             table.setColumnSelectionAllowed(true);
-            for (int i = 0; i < names.length; i++) {
-                TableColumn column = table.getColumn(names[i]);
+            for (String name : names) {
+                TableColumn column = table.getColumn(name);
                 column.setPreferredWidth(110);
             }
-            table.setAutoResizeMode(table.AUTO_RESIZE_OFF);
+            table.setAutoResizeMode(AUTO_RESIZE_OFF);
         
             JScrollPane sp = new JScrollPane(table);
-            sp.setVerticalScrollBarPolicy(sp.VERTICAL_SCROLLBAR_NEVER);
-            sp.setHorizontalScrollBarPolicy(sp.HORIZONTAL_SCROLLBAR_ALWAYS);
+            sp.setVerticalScrollBarPolicy(VERTICAL_SCROLLBAR_NEVER);
+            sp.setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_ALWAYS);
             add(sp);
         }
 
@@ -467,8 +464,6 @@ public class MidiSynth extends JPanel implements ControlContext {
     class Controls extends JPanel implements ActionListener, ChangeListener, ItemListener {
 
         public JButton recordB;
-        JMenu menu;
-        int fileNum = 0;
 
         public Controls() {
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -491,7 +486,7 @@ public class MidiSynth extends JPanel implements ControlContext {
             p.setBorder(new EmptyBorder(10,0,10,0));
             p.setLayout(new BoxLayout(p, BoxLayout.X_AXIS));
 
-            JComboBox combo = new JComboBox();
+            JComboBox<String> combo = new JComboBox<>();
             combo.setPreferredSize(new Dimension(120,25));
             combo.setMaximumSize(new Dimension(120,25));
             for (int i = 1; i <= 16; i++) {
@@ -555,7 +550,7 @@ public class MidiSynth extends JPanel implements ControlContext {
             int value = slider.getValue();
             TitledBorder tb = (TitledBorder) slider.getBorder();
             String s = tb.getTitle();
-            tb.setTitle(s.substring(0, s.indexOf('=')+1) + s.valueOf(value));
+            tb.setTitle(s.substring(0, s.indexOf('=')+1) + String.valueOf(value));
             if (s.startsWith("Velocity")) {
                 cc.velocity = value;
             } else if (s.startsWith("Pressure")) {
@@ -592,11 +587,11 @@ public class MidiSynth extends JPanel implements ControlContext {
         public void actionPerformed(ActionEvent e) {
             JButton button = (JButton) e.getSource();
             if (button.getText().startsWith("All")) {
-                for (int i = 0; i < channels.length; i++) {
-                    channels[i].channel.allNotesOff();
+                for (ChannelData channel : channels) {
+                    channel.channel.allNotesOff();
                 }
-                for (int i = 0; i < keys.size(); i++) {
-                    ((Key) keys.get(i)).setNoteState(OFF);
+                for (Key key : keys) {
+                    key.setNoteState(OFF);
                 }
             } else if (button.getText().startsWith("Record")) {
                 if (recordFrame != null) {
@@ -616,8 +611,7 @@ public class MidiSynth extends JPanel implements ControlContext {
     class RecordFrame extends JFrame implements ActionListener, MetaEventListener {
 
         public JButton recordB, playB, saveB;
-        Vector tracks = new Vector();
-        DefaultListModel listModel = new DefaultListModel();
+        Vector<TrackData> tracks = new Vector<>();
         TableModel dataModel;
         JTable table;
 
@@ -633,17 +627,15 @@ public class MidiSynth extends JPanel implements ControlContext {
                 sequence = new Sequence(Sequence.PPQ, 10);
             } catch (Exception ex) { ex.printStackTrace(); }
 
-            JPanel p1 = new JPanel(new BorderLayout());
+            JPanel panel = new JPanel();
+            panel.setBorder(new EmptyBorder(5, 5, 5, 5));
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
 
-            JPanel p2 = new JPanel();
-            p2.setBorder(new EmptyBorder(5,5,5,5));
-            p2.setLayout(new BoxLayout(p2, BoxLayout.X_AXIS));
+            recordB = createButton("Record", panel, true);
+            playB = createButton("Play", panel, false);
+            saveB = createButton("Save...", panel, false);
 
-            recordB = createButton("Record", p2, true);
-            playB = createButton("Play", p2, false);
-            saveB = createButton("Save...", p2, false);
-
-            getContentPane().add("North", p2);
+            getContentPane().add("North", panel);
 
             final String[] names = { "Channel #", "Instrument" };
     
@@ -652,9 +644,9 @@ public class MidiSynth extends JPanel implements ControlContext {
                 public int getRowCount() { return tracks.size();}
                 public Object getValueAt(int row, int col) { 
                     if (col == 0) {
-                        return ((TrackData) tracks.get(row)).chanNum;
+                        return tracks.get(row).chanNum;
                     } else if (col == 1) {
-                        return ((TrackData) tracks.get(row)).name;
+                        return tracks.get(row).name;
                     } 
                     return null;
                 }
@@ -667,9 +659,9 @@ public class MidiSynth extends JPanel implements ControlContext {
                 }
                 public void setValueAt(Object val, int row, int col) { 
                     if (col == 0) {
-                        ((TrackData) tracks.get(row)).chanNum = (Integer) val;
+                        tracks.get(row).chanNum = (Integer) val;
                     } else if (col == 1) {
-                        ((TrackData) tracks.get(row)).name = (String) val;
+                        tracks.get(row).name = (String) val;
                     } 
                 }
             };
@@ -720,7 +712,7 @@ public class MidiSynth extends JPanel implements ControlContext {
                     playB.setEnabled(false);
                     saveB.setEnabled(false);
                 } else {
-                    String name = null;
+                    String name;
                     if (instruments != null) {
                         name = instruments[cc.col*8+cc.row].getName();
                     } else {
@@ -752,10 +744,7 @@ public class MidiSynth extends JPanel implements ControlContext {
                     JFileChooser fc = new JFileChooser(file);
                     fc.setFileFilter(new javax.swing.filechooser.FileFilter() {
                         public boolean accept(File f) {
-                            if (f.isDirectory()) {
-                                return true;
-                            }
-                            return false;
+                            return f.isDirectory();
                         }
                         public String getDescription() {
                             return "Save as .mid file.";
@@ -800,10 +789,10 @@ public class MidiSynth extends JPanel implements ControlContext {
         }
 
 
-        class TrackData extends Object {
-            Integer chanNum; String name; Track track;
+        class TrackData {
+            int chanNum; String name; Track track;
             public TrackData(int chanNum, String name, Track track) {
-                this.chanNum = new Integer(chanNum);
+                this.chanNum = chanNum;
                 this.name = name;
                 this.track = track;
             }
