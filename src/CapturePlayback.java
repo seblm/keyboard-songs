@@ -1,85 +1,56 @@
-/*
- * @(#)CapturePlayback.java	1.11	99/12/03
- *
- * Copyright (c) 1999 Sun Microsystems, Inc. All Rights Reserved.
- *
- * Sun grants you ("Licensee") a non-exclusive, royalty free, license to use,
- * modify and redistribute this software in source and binary code form,
- * provided that i) this copyright notice and license appear on all copies of
- * the software; and ii) Licensee does not utilize the software in a manner
- * which is disparaging to Sun.
- *
- * This software is provided "AS IS," without a warranty of any kind. ALL
- * EXPRESS OR IMPLIED CONDITIONS, REPRESENTATIONS AND WARRANTIES, INCLUDING ANY
- * IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR
- * NON-INFRINGEMENT, ARE HEREBY EXCLUDED. SUN AND ITS LICENSORS SHALL NOT BE
- * LIABLE FOR ANY DAMAGES SUFFERED BY LICENSEE AS A RESULT OF USING, MODIFYING
- * OR DISTRIBUTING THE SOFTWARE OR ITS DERIVATIVES. IN NO EVENT WILL SUN OR ITS
- * LICENSORS BE LIABLE FOR ANY LOST REVENUE, PROFIT OR DATA, OR FOR DIRECT,
- * INDIRECT, SPECIAL, CONSEQUENTIAL, INCIDENTAL OR PUNITIVE DAMAGES, HOWEVER
- * CAUSED AND REGARDLESS OF THE THEORY OF LIABILITY, ARISING OUT OF THE USE OF
- * OR INABILITY TO USE SOFTWARE, EVEN IF SUN HAS BEEN ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGES.
- *
- * This software is not designed or intended for use in on-line control of
- * aircraft, air traffic, aircraft navigation or aircraft communications; or in
- * the design, construction, operation or maintenance of any nuclear
- * facility. Licensee represents and warrants that it will not use or
- * redistribute the Software for such purposes.
- */
-
-
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.Line2D;
-import javax.swing.*;
-import javax.swing.border.*;
-import java.util.Vector;
-import java.util.Enumeration;
-import java.io.*;
 import javax.sound.sampled.*;
-import java.awt.font.*;
-import java.text.*;
-
-
-
+import javax.swing.*;
+import javax.swing.border.BevelBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.SoftBevelBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.font.FontRenderContext;
+import java.awt.font.LineBreakMeasurer;
+import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
+import java.awt.geom.Line2D;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.text.AttributedCharacterIterator;
+import java.text.AttributedString;
+import java.util.Enumeration;
+import java.util.Vector;
 
 /**
- *  Capture/Playback sample.  Record audio in different formats
- *  and then playback the recorded audio.  The captured audio can 
- *  be saved either as a WAVE, AU or AIFF.  Or load an audio file
- *  for streaming playback.
- *
- * @version @(#)CapturePlayback.java	1.11	99/12/03
- * @author Brian Lichtenwalter  
+ * Capture/Playback sample.  Record audio in different formats
+ * and then playback the recorded audio.  The captured audio can
+ * be saved either as a WAVE, AU or AIFF.  Or load an audio file
+ * for streaming playback.
  */
 public class CapturePlayback extends JPanel implements ActionListener, ControlContext {
 
-    final int bufSize = 16384;
+    private final static int BUFFER_SIZE = 16384;
 
-    FormatControls formatControls = new FormatControls();
-    Capture capture = new Capture();
-    Playback playback = new Playback();
+    private FormatControls formatControls = new FormatControls();
+    private Capture capture = new Capture();
+    private Playback playback = new Playback();
+    private AudioInputStream audioInputStream;
+    private SamplingGraph samplingGraph;
+    private JButton playB, captB, pausB, loadB;
+    private JButton auB, aiffB, waveB;
+    private JTextField textField;
+    private String fileName = "untitled";
+    private String errStr;
+    private double duration, seconds;
+    private File file;
+    private Vector<Line2D> lines = new Vector<>();
 
-    AudioInputStream audioInputStream;
-    SamplingGraph samplingGraph;
-
-    JButton playB, captB, pausB, loadB;
-    JButton auB, aiffB, waveB;
-    JTextField textField;
-
-    String fileName = "untitled";
-    String errStr;
-    double duration, seconds;
-    File file;
-    Vector<Line2D> lines = new Vector<>();
-
-
-
-    public CapturePlayback() {
+    CapturePlayback() {
         setLayout(new BorderLayout());
         SoftBevelBorder sbb = new SoftBevelBorder(SoftBevelBorder.LOWERED);
-        setBorder(new EmptyBorder(5,5,5,5));
+        setBorder(new EmptyBorder(5, 5, 5, 5));
 
         JPanel p1 = new JPanel();
         p1.setLayout(new BoxLayout(p1, BoxLayout.X_AXIS));
@@ -90,7 +61,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         p2.setLayout(new BoxLayout(p2, BoxLayout.Y_AXIS));
 
         JPanel buttonsPanel = new JPanel();
-        buttonsPanel.setBorder(new EmptyBorder(10,0,5,0));
+        buttonsPanel.setBorder(new EmptyBorder(10, 0, 5, 0));
         playB = addButton("Play", buttonsPanel, false);
         captB = addButton("Record", buttonsPanel, true);
         pausB = addButton("Pause", buttonsPanel, false);
@@ -105,11 +76,11 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
 
         JPanel savePanel = new JPanel();
         savePanel.setLayout(new BoxLayout(savePanel, BoxLayout.Y_AXIS));
-     
+
         JPanel saveTFpanel = new JPanel();
         saveTFpanel.add(new JLabel("File to save:  "));
         saveTFpanel.add(textField = new JTextField(fileName));
-        textField.setPreferredSize(new Dimension(140,25));
+        textField.setPreferredSize(new Dimension(140, 25));
         savePanel.add(saveTFpanel);
 
         JPanel saveBpanel = new JPanel();
@@ -124,10 +95,11 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         add(p1);
     }
 
+    @Override
+    public void open() {
+    }
 
-    public void open() { }
-
-
+    @Override
     public void close() {
         if (playback.thread != null) {
             playB.doClick(0);
@@ -137,7 +109,6 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         }
     }
 
-
     private JButton addButton(String name, JPanel p, boolean state) {
         JButton b = new JButton(name);
         b.addActionListener(this);
@@ -146,7 +117,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         return b;
     }
 
-
+    @Override
     public void actionPerformed(ActionEvent e) {
         Object obj = e.getSource();
         if (obj.equals(auB)) {
@@ -183,7 +154,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                 waveB.setEnabled(false);
                 captB.setText("Stop");
             } else {
-                lines.removeAllElements();  
+                lines.removeAllElements();
                 capture.stop();
                 samplingGraph.stop();
                 loadB.setEnabled(true);
@@ -218,7 +189,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             try {
                 File file = new File(System.getProperty("user.dir"));
                 JFileChooser fc = new JFileChooser(file);
-                fc.setFileFilter(new javax.swing.filechooser.FileFilter () {
+                fc.setFileFilter(new javax.swing.filechooser.FileFilter() {
                     public boolean accept(File f) {
                         if (f.isDirectory()) {
                             return true;
@@ -226,6 +197,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                         String name = f.getName();
                         return name.endsWith(".au") || name.endsWith(".wav") || name.endsWith(".aiff") || name.endsWith(".aif");
                     }
+
                     public String getDescription() {
                         return ".au, .wav, .aif";
                     }
@@ -234,17 +206,16 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                 if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
                     createAudioInputStream(fc.getSelectedFile(), true);
                 }
-            } catch (SecurityException ex) { 
+            } catch (SecurityException ex) {
                 JavaSound.showInfoDialog();
                 ex.printStackTrace();
-            } catch (Exception ex) { 
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
         }
     }
 
-
-    public void createAudioInputStream(File file, boolean updateComponents) {
+    private void createAudioInputStream(File file, boolean updateComponents) {
         if (file != null && file.isFile()) {
             try {
                 this.file = file;
@@ -252,7 +223,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                 audioInputStream = AudioSystem.getAudioInputStream(file);
                 playB.setEnabled(true);
                 fileName = file.getName();
-                long milliseconds = (long)((audioInputStream.getFrameLength() * 1000) / audioInputStream.getFormat().getFrameRate());
+                long milliseconds = (long) ((audioInputStream.getFrameLength() * 1000) / audioInputStream.getFormat().getFrameRate());
                 duration = milliseconds / 1000.0;
                 auB.setEnabled(true);
                 aiffB.setEnabled(true);
@@ -261,7 +232,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                     formatControls.setFormat(audioInputStream.getFormat());
                     samplingGraph.createWaveForm(null);
                 }
-            } catch (Exception ex) { 
+            } catch (Exception ex) {
                 reportStatus(ex.toString());
             }
         } else {
@@ -269,9 +240,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         }
     }
 
-
-    public void saveToFile(String name, AudioFileFormat.Type fileType) {
-
+    private void saveToFile(String name, AudioFileFormat.Type fileType) {
         if (audioInputStream == null) {
             reportStatus("No loaded audio to save");
             return;
@@ -282,7 +251,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         // reset to the beginnning of the captured data
         try {
             audioInputStream.reset();
-        } catch (Exception e) { 
+        } catch (Exception e) {
             reportStatus("Unable to reset stream " + e);
             return;
         }
@@ -292,10 +261,11 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             if (AudioSystem.write(audioInputStream, fileType, file) == -1) {
                 throw new IOException("Problems writing to file");
             }
-        } catch (Exception ex) { reportStatus(ex.toString()); }
+        } catch (Exception ex) {
+            reportStatus(ex.toString());
+        }
         samplingGraph.repaint();
     }
-        
 
     private void reportStatus(String msg) {
         if ((errStr = msg) != null) {
@@ -304,26 +274,25 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
         }
     }
 
-
     /**
      * Write data to the OutputChannel.
      */
-    public class Playback implements Runnable {
+    private class Playback implements Runnable {
 
         SourceDataLine line;
         Thread thread;
 
-        public void start() {
+        private void start() {
             errStr = null;
             thread = new Thread(this);
             thread.setName("Playback");
             thread.start();
         }
 
-        public void stop() {
+        private void stop() {
             thread = null;
         }
-        
+
         private void shutDown(String message) {
             if ((errStr = message) != null) {
                 System.err.println(errStr);
@@ -335,7 +304,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                 captB.setEnabled(true);
                 pausB.setEnabled(false);
                 playB.setText("Play");
-            } 
+            }
         }
 
         public void run() {
@@ -361,7 +330,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             // get an AudioInputStream of the desired format for playback
             AudioFormat format = formatControls.getFormat();
             AudioInputStream playbackInputStream = AudioSystem.getAudioInputStream(format, audioInputStream);
-                        
+
             if (playbackInputStream == null) {
                 shutDown("Unable to convert stream of format " + audioInputStream + " to format " + format);
                 return;
@@ -369,26 +338,23 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
 
             // define the required attributes for our line, 
             // and make sure a compatible line is supported.
-
-            DataLine.Info info = new DataLine.Info(SourceDataLine.class, 
-                format);
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class,
+                    format);
             if (!AudioSystem.isLineSupported(info)) {
                 shutDown("Line matching " + info + " not supported.");
                 return;
             }
 
             // get and open the source data line for playback.
-
             try {
                 line = (SourceDataLine) AudioSystem.getLine(info);
-                line.open(format, bufSize);
-            } catch (LineUnavailableException ex) { 
+                line.open(format, BUFFER_SIZE);
+            } catch (LineUnavailableException ex) {
                 shutDown("Unable to open the line: " + ex);
                 return;
             }
 
             // play back the captured audio data
-
             int frameSizeInBytes = format.getFrameSize();
             int bufferLengthInFrames = line.getBufferSize() / 8;
             int bufferLengthInBytes = bufferLengthInFrames * frameSizeInBytes;
@@ -404,7 +370,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                         break;
                     }
                     int numBytesRemaining = numBytesRead;
-                    while (numBytesRemaining > 0 ) {
+                    while (numBytesRemaining > 0) {
                         numBytesRemaining -= line.write(data, 0, numBytesRemaining);
                     }
                 } catch (Exception e) {
@@ -422,28 +388,27 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             line = null;
             shutDown(null);
         }
-    } // End class Playback
-        
+    }
 
-    /** 
+    /**
      * Reads data from the input channel and writes to the output stream
      */
-    class Capture implements Runnable {
+    private class Capture implements Runnable {
 
         TargetDataLine line;
         Thread thread;
 
-        public void start() {
+        private void start() {
             errStr = null;
             thread = new Thread(this);
             thread.setName("Capture");
             thread.start();
         }
 
-        public void stop() {
+        private void stop() {
             thread = null;
         }
-        
+
         private void shutDown(String message) {
             if ((errStr = message) != null && thread != null) {
                 thread = null;
@@ -460,18 +425,18 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             }
         }
 
+        @Override
         public void run() {
-
             duration = 0;
             audioInputStream = null;
-            
+
             // define the required attributes for our line, 
             // and make sure a compatible line is supported.
 
             AudioFormat format = formatControls.getFormat();
-            DataLine.Info info = new DataLine.Info(TargetDataLine.class, 
-                format);
-                        
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class,
+                    format);
+
             if (!AudioSystem.isLineSupported(info)) {
                 shutDown("Line matching " + info + " not supported.");
                 return;
@@ -482,14 +447,14 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             try {
                 line = (TargetDataLine) AudioSystem.getLine(info);
                 line.open(format, line.getBufferSize());
-            } catch (LineUnavailableException ex) { 
+            } catch (LineUnavailableException ex) {
                 shutDown("Unable to open the line: " + ex);
                 return;
-            } catch (SecurityException ex) { 
+            } catch (SecurityException ex) {
                 shutDown(ex.toString());
                 JavaSound.showInfoDialog();
                 return;
-            } catch (Exception ex) { 
+            } catch (Exception ex) {
                 shutDown(ex.toString());
                 return;
             }
@@ -501,11 +466,11 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             int bufferLengthInBytes = bufferLengthInFrames * frameSizeInBytes;
             byte[] data = new byte[bufferLengthInBytes];
             int numBytesRead;
-            
+
             line.start();
 
             while (thread != null) {
-                if((numBytesRead = line.read(data, 0, bufferLengthInBytes)) == -1) {
+                if ((numBytesRead = line.read(data, 0, bufferLengthInBytes)) == -1) {
                     break;
                 }
                 out.write(data, 0, numBytesRead);
@@ -525,41 +490,38 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             }
 
             // load bytes into the audio input stream for playback
-
             byte audioBytes[] = out.toByteArray();
             ByteArrayInputStream bais = new ByteArrayInputStream(audioBytes);
             audioInputStream = new AudioInputStream(bais, format, audioBytes.length / frameSizeInBytes);
 
-            long milliseconds = (long)((audioInputStream.getFrameLength() * 1000) / format.getFrameRate());
+            long milliseconds = (long) ((audioInputStream.getFrameLength() * 1000) / format.getFrameRate());
             duration = milliseconds / 1000.0;
 
             try {
                 audioInputStream.reset();
-            } catch (Exception ex) { 
-                ex.printStackTrace(); 
+            } catch (Exception ex) {
+                ex.printStackTrace();
                 return;
             }
 
             samplingGraph.createWaveForm(audioBytes);
         }
-    } // End class Capture
- 
+    }
 
     /**
      * Controls for the AudioFormat.
      */
-    class FormatControls extends JPanel {
-    
+    private static class FormatControls extends JPanel {
         Vector<ButtonGroup> groups = new Vector<>();
         JToggleButton linrB, ulawB, alawB, rate8B, rate11B, rate16B, rate22B, rate44B;
-        JToggleButton size8B, size16B, signB, unsignB, litB, bigB, monoB,sterB;
-    
+        JToggleButton size8B, size16B, signB, unsignB, litB, bigB, monoB, sterB;
+
         public FormatControls() {
-            setLayout(new GridLayout(0,1));
-            EmptyBorder eb = new EmptyBorder(0,0,0,5);
+            setLayout(new GridLayout(0, 1));
+            EmptyBorder eb = new EmptyBorder(0, 0, 0, 5);
             BevelBorder bb = new BevelBorder(BevelBorder.LOWERED);
             CompoundBorder cb = new CompoundBorder(eb, bb);
-            setBorder(new CompoundBorder(cb, new EmptyBorder(8,5,5,5)));
+            setBorder(new CompoundBorder(cb, new EmptyBorder(8, 5, 5, 5)));
             JPanel p1 = new JPanel();
             ButtonGroup encodingGroup = new ButtonGroup();
             linrB = addToggleButton(p1, encodingGroup, "linear", true);
@@ -567,7 +529,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             alawB = addToggleButton(p1, encodingGroup, "alaw", false);
             add(p1);
             groups.addElement(encodingGroup);
-               
+
             JPanel p2 = new JPanel();
             JPanel p2b = new JPanel();
             ButtonGroup sampleRateGroup = new ButtonGroup();
@@ -577,16 +539,16 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             rate22B = addToggleButton(p2b, sampleRateGroup, "22050", false);
             rate44B = addToggleButton(p2b, sampleRateGroup, "44100", true);
             add(p2);
-	    add(p2b);
+            add(p2b);
             groups.addElement(sampleRateGroup);
-    
+
             JPanel p3 = new JPanel();
             ButtonGroup sampleSizeInBitsGroup = new ButtonGroup();
             size8B = addToggleButton(p3, sampleSizeInBitsGroup, "8", false);
             size16B = addToggleButton(p3, sampleSizeInBitsGroup, "16", true);
             add(p3);
             groups.addElement(sampleSizeInBitsGroup);
-    
+
             JPanel p4 = new JPanel();
             ButtonGroup signGroup = new ButtonGroup();
             signB = addToggleButton(p4, signGroup, "signed", true);
@@ -608,17 +570,15 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             add(p6);
             groups.addElement(channelsGroup);
         }
-    
-        private JToggleButton addToggleButton(JPanel p, ButtonGroup g, 
-                                     String name, boolean state) {
+
+        private JToggleButton addToggleButton(JPanel p, ButtonGroup g, String name, boolean state) {
             JToggleButton b = new JToggleButton(name, state);
             p.add(b);
             g.add(b);
             return b;
         }
 
-        public AudioFormat getFormat() {
-
+        private AudioFormat getFormat() {
             Vector<String> v = new Vector<>(groups.size());
             for (ButtonGroup group : groups) {
                 for (Enumeration e = group.getElements(); e.hasMoreElements(); ) {
@@ -647,21 +607,22 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             } else if (encString.equals("alaw")) {
                 encoding = AudioFormat.Encoding.ALAW;
             }
-            return new AudioFormat(encoding, rate, sampleSize, 
-                          channels, (sampleSize/8)*channels, rate, bigEndian);
+            return new AudioFormat(encoding, rate, sampleSize,
+                    channels, (sampleSize / 8) * channels, rate, bigEndian);
         }
 
-
-        public void setFormat(AudioFormat format) {
+        private void setFormat(AudioFormat format) {
             AudioFormat.Encoding type = format.getEncoding();
             if (type == AudioFormat.Encoding.ULAW) {
                 ulawB.doClick();
             } else if (type == AudioFormat.Encoding.ALAW) {
                 alawB.doClick();
             } else if (type == AudioFormat.Encoding.PCM_SIGNED) {
-                linrB.doClick(); signB.doClick(); 
+                linrB.doClick();
+                signB.doClick();
             } else if (type == AudioFormat.Encoding.PCM_UNSIGNED) {
-                linrB.doClick(); unsignB.doClick(); 
+                linrB.doClick();
+                unsignB.doClick();
             }
             float rate = format.getFrameRate();
             if (rate == 8000) {
@@ -676,104 +637,101 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                 rate44B.doClick();
             }
             switch (format.getSampleSizeInBits()) {
-                case 8  : size8B.doClick(); break;
-                case 16 : size16B.doClick(); break;
+                case 8:
+                    size8B.doClick();
+                    break;
+                case 16:
+                    size16B.doClick();
+                    break;
             }
             if (format.isBigEndian()) {
-                bigB.doClick(); 
-            } else { 
+                bigB.doClick();
+            } else {
                 litB.doClick();
             }
             if (format.getChannels() == 1) {
-                monoB.doClick(); 
-            } else { 
+                monoB.doClick();
+            } else {
                 sterB.doClick();
             }
         }
-    } // End class FormatControls
-
+    }
 
     /**
      * Render a WaveForm.
      */
-    class SamplingGraph extends JPanel implements Runnable {
-
+    private class SamplingGraph extends JPanel implements Runnable {
         private Thread thread;
         private Font font12 = new Font("serif", Font.PLAIN, 12);
         Color jfcBlue = new Color(204, 204, 255);
         Color pink = new Color(255, 175, 175);
- 
 
-        public SamplingGraph() {
+        private SamplingGraph() {
             setBackground(new Color(20, 20, 20));
         }
 
-
-        public void createWaveForm(byte[] audioBytes) {
-
+        private void createWaveForm(byte[] audioBytes) {
             lines.removeAllElements();  // clear the old vector
 
             AudioFormat format = audioInputStream.getFormat();
             if (audioBytes == null) {
                 try {
-                    audioBytes = new byte[
-                        (int) (audioInputStream.getFrameLength() 
-                        * format.getFrameSize())];
+                    audioBytes = new byte[(int) (audioInputStream.getFrameLength() * format.getFrameSize())];
                     audioInputStream.read(audioBytes);
-                } catch (Exception ex) { 
+                } catch (Exception ex) {
                     reportStatus(ex.toString());
-                    return; 
+                    return;
                 }
             }
 
             Dimension d = getSize();
             int w = d.width;
-            int h = d.height-15;
+            int h = d.height - 15;
             int[] audioData = null;
             if (format.getSampleSizeInBits() == 16) {
-                 int nlengthInSamples = audioBytes.length / 2;
-                 audioData = new int[nlengthInSamples];
-                 if (format.isBigEndian()) {
+                int nlengthInSamples = audioBytes.length / 2;
+                audioData = new int[nlengthInSamples];
+                if (format.isBigEndian()) {
                     for (int i = 0; i < nlengthInSamples; i++) {
                          /* First byte is MSB (high order) */
-                         int MSB = (int) audioBytes[2*i];
+                        int MSB = (int) audioBytes[2 * i];
                          /* Second byte is LSB (low order) */
-                         int LSB = (int) audioBytes[2*i+1];
-                         audioData[i] = MSB << 8 | (255 & LSB);
-                     }
-                 } else {
-                     for (int i = 0; i < nlengthInSamples; i++) {
+                        int LSB = (int) audioBytes[2 * i + 1];
+                        audioData[i] = MSB << 8 | (255 & LSB);
+                    }
+                } else {
+                    for (int i = 0; i < nlengthInSamples; i++) {
                          /* First byte is LSB (low order) */
-                         int LSB = (int) audioBytes[2*i];
+                        int LSB = (int) audioBytes[2 * i];
                          /* Second byte is MSB (high order) */
-                         int MSB = (int) audioBytes[2*i+1];
-                         audioData[i] = MSB << 8 | (255 & LSB);
-                     }
-                 }
-             } else if (format.getSampleSizeInBits() == 8) {
-                 int nlengthInSamples = audioBytes.length;
-                 audioData = new int[nlengthInSamples];
-                 if (format.getEncoding().toString().startsWith("PCM_SIGN")) {
-                     for (int i = 0; i < audioBytes.length; i++) {
-                         audioData[i] = audioBytes[i];
-                     }
-                 } else {
-                     for (int i = 0; i < audioBytes.length; i++) {
-                         audioData[i] = audioBytes[i] - 128;
-                     }
-                 }
+                        int MSB = (int) audioBytes[2 * i + 1];
+                        audioData[i] = MSB << 8 | (255 & LSB);
+                    }
+                }
+            } else if (format.getSampleSizeInBits() == 8) {
+                int nlengthInSamples = audioBytes.length;
+                audioData = new int[nlengthInSamples];
+                if (format.getEncoding().toString().startsWith("PCM_SIGN")) {
+                    for (int i = 0; i < audioBytes.length; i++) {
+                        audioData[i] = audioBytes[i];
+                    }
+                } else {
+                    for (int i = 0; i < audioBytes.length; i++) {
+                        audioData[i] = audioBytes[i] - 128;
+                    }
+                }
             }
-               
-            int frames_per_pixel = audioBytes.length / format.getFrameSize()/w;
+
+            int frames_per_pixel = audioBytes.length / format.getFrameSize() / w;
             byte my_byte;
             double y_last = 0;
             int numChannels = format.getChannels();
             for (double x = 0; x < w && audioData != null; x++) {
                 int idx = (int) (frames_per_pixel * numChannels * x);
                 if (format.getSampleSizeInBits() == 8) {
-                     my_byte = (byte) audioData[idx];
+                    my_byte = (byte) audioData[idx];
                 } else {
-                     my_byte = (byte) (128 * audioData[idx] / 32768 );
+                    my_byte = (byte) (128 * audioData[idx] / 32768);
                 }
                 double y_new = (double) (h * (128 - my_byte) / 256);
                 lines.add(new Line2D.Double(x, y_last, x, y_new));
@@ -783,9 +741,8 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             repaint();
         }
 
-
+        @Override
         public void paint(Graphics g) {
-
             Dimension d = getSize();
             int w = d.width;
             int h = d.height;
@@ -795,7 +752,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             g2.setBackground(getBackground());
             g2.clearRect(0, 0, w, h);
             g2.setColor(Color.white);
-            g2.fillRect(0, h-INFOPAD, w, INFOPAD);
+            g2.fillRect(0, h - INFOPAD, w, INFOPAD);
 
             if (errStr != null) {
                 g2.setColor(jfcBlue);
@@ -809,7 +766,7 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
                 float x = 5, y = 25;
                 lbm.setPosition(0);
                 while (lbm.getPosition() < errStr.length()) {
-                    TextLayout tl = lbm.nextLayout(w-x-5);
+                    TextLayout tl = lbm.nextLayout(w - x - 5);
                     if (!tl.isLeftToRight()) {
                         x = w - tl.getAdvance();
                     }
@@ -819,11 +776,11 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
             } else if (capture.thread != null) {
                 g2.setColor(Color.black);
                 g2.setFont(font12);
-                g2.drawString("Length: " + String.valueOf(seconds), 3, h-4);
+                g2.drawString("Length: " + String.valueOf(seconds), 3, h - 4);
             } else {
                 g2.setColor(Color.black);
                 g2.setFont(font12);
-                g2.drawString("File: " + fileName + "  Length: " + String.valueOf(duration) + "  Position: " + String.valueOf(seconds), 3, h-4);
+                g2.drawString("File: " + fileName + "  Length: " + String.valueOf(duration) + "  Position: " + String.valueOf(seconds), 3, h - 4);
 
                 if (audioInputStream != null) {
                     // .. render sampling graph ..
@@ -834,73 +791,80 @@ public class CapturePlayback extends JPanel implements ActionListener, ControlCo
 
                     // .. draw current position ..
                     if (seconds != 0) {
-                        double loc = seconds/duration*w;
+                        double loc = seconds / duration * w;
                         g2.setColor(pink);
                         g2.setStroke(new BasicStroke(3));
-                        g2.draw(new Line2D.Double(loc, 0, loc, h-INFOPAD-2));
+                        g2.draw(new Line2D.Double(loc, 0, loc, h - INFOPAD - 2));
                     }
                 }
             }
         }
-    
-        public void start() {
+
+        private void start() {
             thread = new Thread(this);
             thread.setName("SamplingGraph");
             thread.start();
             seconds = 0;
         }
 
-        public void stop() {
+        private void stop() {
             if (thread != null) {
                 thread.interrupt();
             }
             thread = null;
         }
 
+        @Override
         public void run() {
             seconds = 0;
             while (thread != null) {
-                if ((playback.line != null) && (playback.line.isOpen()) ) {
+                if ((playback.line != null) && (playback.line.isOpen())) {
 
                     long milliseconds = playback.line.getMicrosecondPosition() / 1000;
-                    seconds =  milliseconds / 1000.0;
-                } else if ( (capture.line != null) && (capture.line.isActive()) ) {
+                    seconds = milliseconds / 1000.0;
+                } else if ((capture.line != null) && (capture.line.isActive())) {
 
                     long milliseconds = capture.line.getMicrosecondPosition() / 1000;
-                    seconds =  milliseconds / 1000.0;
+                    seconds = milliseconds / 1000.0;
                 }
 
-                try { Thread.sleep(100); } catch (Exception e) { break; }
+                try {
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    break;
+                }
 
                 repaint();
-                                
+
                 while ((capture.line != null && !capture.line.isActive()) ||
-                       (playback.line != null && !playback.line.isOpen())) 
-                {
-                    try { Thread.sleep(10); } catch (Exception e) { break; }
+                        (playback.line != null && !playback.line.isOpen())) {
+                    try {
+                        Thread.sleep(10);
+                    } catch (Exception e) {
+                        break;
+                    }
                 }
             }
             seconds = 0;
             repaint();
         }
-    } // End class SamplingGraph
-
-
-
+    }
 
     public static void main(String s[]) {
         CapturePlayback capturePlayback = new CapturePlayback();
         capturePlayback.open();
         JFrame f = new JFrame("Capture/Playback");
         f.addWindowListener(new WindowAdapter() {
-            public void windowClosing(WindowEvent e) { System.exit(0); }
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
         });
         f.getContentPane().add("Center", capturePlayback);
         f.pack();
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         int w = 720;
         int h = 340;
-        f.setLocation(screenSize.width/2 - w/2, screenSize.height/2 - h/2);
+        f.setLocation(screenSize.width / 2 - w / 2, screenSize.height / 2 - h / 2);
         f.setSize(w, h);
         f.setVisible(true);
     }
