@@ -13,22 +13,22 @@ import static forchild.Note.*;
  */
 public class PetitPapaNoel implements Iterable<PartitionElement> {
     private static final PartitionElement[] elements = {
-            new PartitionElement(SOL_4, NOIRE),
-            new PartitionElement(DO_5, NOIRE), new PartitionElement(DO_5, NOIRE), new PartitionElement(DO_5, NOIRE), new PartitionElement(RE_5, NOIRE),
-            new PartitionElement(DO_5, BLANCHE_POINT), new PartitionElement(DO_5, CROCHE), new PartitionElement(RE_5, CROCHE),
-            new PartitionElement(MI_5, NOIRE), new PartitionElement(MI_5, NOIRE), new PartitionElement(MI_5, NOIRE), new PartitionElement(FA_5, NOIRE),
-            new PartitionElement(MI_5, BLANCHE_POINT), new PartitionElement(RE_5, NOIRE),
+            new PartitionElement(NOIRE, SOL_4),
+            new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, RE_5),
+            new PartitionElement(BLANCHE_POINT, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, RE_5),
+            new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, FA_5),
+            new PartitionElement(BLANCHE_POINT, MI_5), new PartitionElement(NOIRE, RE_5),
 
-            new PartitionElement(DO_5, NOIRE_POINT), new PartitionElement(DO_5, CROCHE), new PartitionElement(DO_5, CROCHE), new PartitionElement(DO_5, CROCHE), new PartitionElement(SI_4, CROCHE), new PartitionElement(LA_4, CROCHE),
-            new PartitionElement(SOL_4, BLANCHE_POINT), new PartitionElement(SOL_4, CROCHE), new PartitionElement(SOL_4, CROCHE),
-            new PartitionElement(DO_5, BLANCHE), new PartitionElement(DO_5, CROCHE), new PartitionElement(DO_5, CROCHE), new PartitionElement(SI_4, CROCHE), new PartitionElement(DO_5, CROCHE),
-            new PartitionElement(RE_5, BLANCHE_POINT), new PartitionElement(SOL_4, NOIRE),
+            new PartitionElement(NOIRE_POINT, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, SI_4), new PartitionElement(CROCHE, LA_4),
+            new PartitionElement(BLANCHE_POINT, SOL_4), new PartitionElement(CROCHE, SOL_4), new PartitionElement(CROCHE, SOL_4),
+            new PartitionElement(BLANCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, SI_4), new PartitionElement(CROCHE, DO_5),
+            new PartitionElement(BLANCHE_POINT, RE_5), new PartitionElement(NOIRE, SOL_4),
 
-            new PartitionElement(SOL_4, NOIRE),
-            new PartitionElement(DO_5, NOIRE), new PartitionElement(DO_5, NOIRE), new PartitionElement(DO_5, NOIRE), new PartitionElement(RE_5, NOIRE),
-            new PartitionElement(DO_5, BLANCHE_POINT), new PartitionElement(DO_5, CROCHE), new PartitionElement(RE_5, CROCHE),
-            new PartitionElement(MI_5, NOIRE), new PartitionElement(MI_5, NOIRE), new PartitionElement(MI_5, NOIRE), new PartitionElement(FA_5, NOIRE),
-            new PartitionElement(MI_5, BLANCHE_POINT), new PartitionElement(RE_5, NOIRE),
+            new PartitionElement(NOIRE, SOL_4),
+            new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, RE_5),
+            new PartitionElement(BLANCHE_POINT, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, RE_5),
+            new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, FA_5),
+            new PartitionElement(BLANCHE_POINT, MI_5), new PartitionElement(NOIRE, RE_5),
     };
 
     @Override

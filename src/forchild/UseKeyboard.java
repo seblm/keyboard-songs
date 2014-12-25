@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import static java.lang.System.exit;
+import static java.util.Arrays.stream;
 
 public class UseKeyboard extends JPanel implements KeyListener {
     private final MidiChannel channel;
@@ -39,7 +40,7 @@ public class UseKeyboard extends JPanel implements KeyListener {
     }
     
     private void play(PartitionElement partitionElement) {
-        channel.noteOn(partitionElement.note.number, 64);
+        stream(partitionElement.notes).forEach(note -> channel.noteOn(note.number, 64));
     }
 
     public static void main(String[] args) {
