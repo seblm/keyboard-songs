@@ -1,6 +1,6 @@
 package forchild.songs;
 
-import forchild.PartitionElement;
+import forchild.P;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -11,29 +11,33 @@ import static forchild.Note.*;
 /**
  * http://www.holvoet.org/partitions/pdf/ppnoel.pdf
  */
-public class PetitPapaNoel implements Iterable<PartitionElement> {
-    private static final PartitionElement[] elements = {
-            new PartitionElement(NOIRE, SOL_4),
-            new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, RE_5),
-            new PartitionElement(BLANCHE_POINT, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, RE_5),
-            new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, FA_5),
-            new PartitionElement(BLANCHE_POINT, MI_5), new PartitionElement(NOIRE, RE_5),
+public class PetitPapaNoel implements Iterable<P> {
+    private static final P[] elements = {
+            new P(NOIRE, SOL_4),                                                            // Pe
+            new P(NOIRE, DO_5), new P(NOIRE, DO_5), new P(NOIRE, DO_5), new P(NOIRE, RE_5), // tit papa No
+            new P(BLANCHE_POINT, DO_5), new P(CROCHE, DO_5), new P(CROCHE, RE_5),           // ël, Quand tu
+            new P(NOIRE, MI_5), new P(NOIRE, MI_5), new P(NOIRE, MI_5), new P(NOIRE, FA_5), // descendra du
+            new P(BLANCHE_POINT, MI_5), new P(NOIRE, RE_5),                                 // ciel, A
 
-            new PartitionElement(NOIRE_POINT, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, SI_4), new PartitionElement(CROCHE, LA_4),
-            new PartitionElement(BLANCHE_POINT, SOL_4), new PartitionElement(CROCHE, SOL_4), new PartitionElement(CROCHE, SOL_4),
-            new PartitionElement(BLANCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, SI_4), new PartitionElement(CROCHE, DO_5),
-            new PartitionElement(BLANCHE_POINT, RE_5), new PartitionElement(NOIRE, SOL_4),
+            new P(NOIRE_POINT, DO_5), new P(CROCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, SI_4), new P(CROCHE, LA_4), // vec tes jouets par mil
+            new P(BLANCHE_POINT, SOL_4), new P(CROCHE, SOL_4), new P(CROCHE, SOL_4),                                                           // liers N'oublie
+            new P(BLANCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, SI_4), new P(CROCHE, DO_5),                          // pas mon petit sou
+            new P(BLANCHE_POINT, RE_5), new P(NOIRE, SOL_4),                                                                                   // lier Mais
 
-            new PartitionElement(NOIRE, SOL_4),
-            new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, DO_5), new PartitionElement(NOIRE, RE_5),
-            new PartitionElement(BLANCHE_POINT, DO_5), new PartitionElement(CROCHE, DO_5), new PartitionElement(CROCHE, RE_5),
-            new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, MI_5), new PartitionElement(NOIRE, FA_5),
-            new PartitionElement(BLANCHE_POINT, MI_5), new PartitionElement(NOIRE, RE_5),
+            new P(NOIRE, DO_5), new P(NOIRE, DO_5), new P(NOIRE, DO_5), new P(NOIRE, RE_5), // avant de par
+            new P(BLANCHE_POINT, DO_5), new P(CROCHE, DO_5), new P(CROCHE, RE_5),           // tir, Il fau
+            new P(NOIRE, MI_5), new P(NOIRE, MI_5), new P(NOIRE, MI_5), new P(NOIRE, FA_5), // dra bien te cou
+            new P(BLANCHE_POINT, MI_5), new P(NOIRE, RE_5),                                 // vir De
+
+            new P(NOIRE_POINT, DO_5), new P(CROCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, SI_4), new P(CROCHE, LA_4), // hors tu vas avoir si
+            new P(BLANCHE_POINT, SOL_4), new P(CROCHE, SOL_4), new P(CROCHE, SOL_4),                                                           // froid C'est un
+            new P(BLANCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, DO_5), new P(CROCHE, RE_5), new P(CROCHE, RE_5),                          // peu à cause de
+            new P(RONDE, DO_5)                                                                                                                 // moi
     };
 
     @Override
-    public Iterator<PartitionElement> iterator() {
-        return new Iterator<PartitionElement>() {
+    public Iterator<P> iterator() {
+        return new Iterator<P>() {
             private int cursor = 0;
 
             @Override
@@ -42,7 +46,7 @@ public class PetitPapaNoel implements Iterable<PartitionElement> {
             }
 
             @Override
-            public PartitionElement next() {
+            public P next() {
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }

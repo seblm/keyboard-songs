@@ -23,7 +23,7 @@ import static java.util.Arrays.stream;
 public class UseKeyboard extends JPanel implements KeyListener {
     private final MidiChannel channel;
     
-    private Iterator<PartitionElement> song;
+    private Iterator<P> song;
 
     public UseKeyboard() {
         try {
@@ -39,7 +39,7 @@ public class UseKeyboard extends JPanel implements KeyListener {
         }
     }
     
-    private void play(PartitionElement partitionElement) {
+    private void play(P partitionElement) {
         stream(partitionElement.notes).forEach(note -> channel.noteOn(note.number, 64));
     }
 

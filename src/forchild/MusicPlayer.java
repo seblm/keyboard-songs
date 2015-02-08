@@ -1,6 +1,5 @@
 package forchild;
 
-import forchild.songs.LetItGo;
 import forchild.songs.PetitPapaNoel;
 
 import javax.imageio.ImageIO;
@@ -10,13 +9,10 @@ import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Synthesizer;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Iterator;
 
 import static java.lang.System.exit;
@@ -26,7 +22,7 @@ import static java.util.Arrays.stream;
 public class MusicPlayer extends JPanel {
     private final MidiChannel channel;
 
-    private Iterator<PartitionElement> song;
+    private Iterator<P> song;
 
     public MusicPlayer() {
         try {
@@ -35,7 +31,7 @@ public class MusicPlayer extends JPanel {
             synthesizer.loadInstrument(synthesizer.getDefaultSoundbank().getInstruments()[0]);
 
             channel = synthesizer.getChannels()[0];
-            song = new LetItGo().iterator();
+            song = new PetitPapaNoel().iterator();
             add(new JLabel(new ImageIcon(ImageIO.read(new File("santaclaus.jpg")))));
         } catch (MidiUnavailableException | IOException e) {
             throw new RuntimeException(e);
@@ -46,7 +42,7 @@ public class MusicPlayer extends JPanel {
         song.forEachRemaining(this::play);
     }
     
-    private void play(PartitionElement partitionElement) {
+    private void play(P partitionElement) {
         stream(partitionElement.notes).forEach(note -> channel.noteOn(note.number, 64));
         try {
             sleep(partitionElement.duration.millis);

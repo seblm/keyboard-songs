@@ -1,9 +1,10 @@
 package forchild;
 
 public enum Duration {
-    BLANCHE_POINT(1000),
+    RONDE(4000),
+    BLANCHE_POINT(1500),
     BLANCHE(1000),
-    NOIRE_POINT(7500),
+    NOIRE_POINT(750),
     NOIRE(500),
     CROCHE(250);
     
