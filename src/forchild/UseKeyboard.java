@@ -16,25 +16,44 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.concurrent.Executor;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.System.exit;
+import static java.lang.Thread.sleep;
 import static java.util.Arrays.stream;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class UseKeyboard extends JPanel implements KeyListener {
     private final MidiChannel channel;
-    
-    private Iterator<P> song;
+    private final Iterator<P> song;
+    private final Executor executor;
+    private final ReentrantLock lock;
 
     public UseKeyboard() {
-        try {
-            Synthesizer synthesizer = MidiSystem.getSynthesizer();
-            synthesizer.open();
-            synthesizer.loadInstrument(synthesizer.getDefaultSoundbank().getInstruments()[0]);
+        addImage();
+        channel = initializeSynthesizer().getChannels()[0];
+        song = new PetitPapaNoel().infiniteIterator();
+        executor = newSingleThreadExecutor();
+        lock = new ReentrantLock();
+    }
 
-            channel = synthesizer.getChannels()[0];
-            song = new PetitPapaNoel().iterator();
+    private Synthesizer initializeSynthesizer() {
+        Synthesizer synthesizer;
+        try {
+            synthesizer = MidiSystem.getSynthesizer();
+            synthesizer.open();
+        } catch (MidiUnavailableException e) {
+            throw new RuntimeException(e);
+        }
+        synthesizer.loadInstrument(synthesizer.getDefaultSoundbank().getInstruments()[0]);
+        return synthesizer;
+    }
+
+    private void addImage() {
+        try {
             add(new JLabel(new ImageIcon(ImageIO.read(new File("santaclaus.jpg")))));
-        } catch (MidiUnavailableException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -70,10 +89,21 @@ public class UseKeyboard extends JPanel implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (!song.hasNext()) {
-            song = new PetitPapaNoel().iterator();
+        if (lock.tryLock()) {
+            executor.execute(() -> {
+                lock.lock();
+                P partitionElement = song.next();
+                play(partitionElement);
+                try {
+                    sleep(3 * (partitionElement.duration.millis / 4));
+                } catch (InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                } finally {
+                    lock.unlock();
+                }
+            });
+            lock.unlock();
         }
-        play(song.next());
     }
 
     @Override

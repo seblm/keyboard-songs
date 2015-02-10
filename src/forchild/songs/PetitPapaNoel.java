@@ -64,4 +64,20 @@ public class PetitPapaNoel implements Iterable<P> {
             }
         };
     }
+    
+    public Iterator<P> infiniteIterator() {
+        return new Iterator<P>() {
+            private int cursor = 0;
+
+            @Override
+            public boolean hasNext() {
+                return true;
+            }
+
+            @Override
+            public P next() {
+                return elements[cursor++ % elements.length];
+            }
+        };
+    }
 }
