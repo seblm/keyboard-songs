@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.System.exit;
@@ -28,7 +29,7 @@ public class UseKeyboard extends JPanel implements KeyListener {
     private final MidiChannel channel;
     private final Iterator<P> song;
     private final Executor executor;
-    private final ReentrantLock lock;
+    private final Lock lock;
 
     public UseKeyboard() {
         addImage();
