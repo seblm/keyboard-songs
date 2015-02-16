@@ -17,8 +17,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.Executor;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.System.exit;
 import static java.lang.Thread.sleep;
@@ -29,14 +27,15 @@ public class UseKeyboard extends JPanel implements KeyListener {
     private final MidiChannel channel;
     private final Iterator<P> song;
     private final Executor executor;
-    private final Lock lock;
+
+    private volatile boolean playing;
 
     public UseKeyboard() {
         addImage();
         channel = initializeSynthesizer().getChannels()[0];
         song = new PetitPapaNoel().infiniteIterator();
         executor = newSingleThreadExecutor();
-        lock = new ReentrantLock();
+        playing = false;
     }
 
     private Synthesizer initializeSynthesizer() {
@@ -90,21 +89,21 @@ public class UseKeyboard extends JPanel implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (lock.tryLock()) {
-            executor.execute(() -> {
-                lock.lock();
-                P partitionElement = song.next();
-                play(partitionElement);
-                try {
-                    sleep(3 * (partitionElement.duration.millis / 4));
-                } catch (InterruptedException exception) {
-                    throw new RuntimeException(exception);
-                } finally {
-                    lock.unlock();
-                }
-            });
-            lock.unlock();
+        if (playing) {
+            return;
         }
+        playing = true;
+        executor.execute(() -> {
+            P partitionElement = song.next();
+            play(partitionElement);
+            try {
+                sleep(3 * (partitionElement.duration.millis / 4));
+            } catch (InterruptedException exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                playing = false;
+            }
+        });
     }
 
     @Override
